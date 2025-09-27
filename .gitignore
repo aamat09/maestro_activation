@@ -1,0 +1,89 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Compiled binaries
+*.o
+*.so
+*.a
+*.exe
+maestro_activation_server
+
+# Database files (may contain sensitive data)
+*.db
+*.sqlite
+*.sqlite3
+
+# SSL certificates and keys
+*.crt
+*.key
+*.pem
+*.p12
+
+# Log files
+*.log
+logs/
+
+# Configuration files with secrets (example configs are tracked)
+config/*.local.conf
+config/*.prod.conf
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Runtime files
+*.pid
+*.lock
+
+# Coverage and testing
+coverage/
+*.gcov
+*.gcda
+*.gcno
+
+# Documentation build
+docs/_build/
+
+# Package files
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+
+# Local development environment
+.env
+.env.local
+
+# Secrets and security keys (keep example files)
+keys/server.*
+keys/*.key
+keys/*.crt
+secrets/
+.secrets/
+
+# Database backups
+backups/
+*.dump

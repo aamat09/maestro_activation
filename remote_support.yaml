@@ -1,0 +1,67 @@
+# Maestro Remote Support Configuration
+# Secure customer-controlled remote access system
+
+# RustDesk Server Configuration (Your self-hosted server)
+server_url: "rustdesk.maestro-support.com"
+server_port: 21116
+relay_port: 21117
+api_port: 21118
+
+# Encrypted server key (replace with your actual encrypted key)
+encrypted_server_key: "gAAAAABhZQF4Zq_example_encrypted_key_here"
+
+# Session Management
+max_session_duration: 7200  # 2 hours in seconds
+session_warning_time: 300   # 5 minutes warning before expiry
+auto_disconnect_on_idle: 1800  # 30 minutes idle timeout
+
+# Security Settings
+require_customer_approval: true    # Customer must approve each connection
+auto_accept_connections: false     # Never auto-accept
+enable_file_transfer: false        # Disable file transfer for security
+enable_clipboard: true             # Allow clipboard sharing
+enable_audio: true                 # Allow audio for communication
+
+# Support Hours (Optional - set to null to allow 24/7)
+allowed_support_hours:
+  start: "08:00"
+  end: "20:00"
+  timezone: "UTC"
+  days: ["monday", "tuesday", "wednesday", "thursday", "friday"]
+
+# Customer Notification Settings
+notifications:
+  email_on_session_start: false
+  email_on_session_end: true
+  slack_webhook: null
+  discord_webhook: null
+
+# Logging and Audit
+log_all_sessions: true
+log_level: "INFO"
+audit_trail: true
+session_recordings: false  # Disabled for privacy
+
+# Rate Limiting
+max_sessions_per_day: 3
+cooldown_between_sessions: 3600  # 1 hour
+
+# Emergency Settings
+emergency_contact: "support@maestro.com"
+emergency_override_code: null  # Set only for emergency access
+
+# Advanced Security
+allowed_admin_ips: []  # Empty = allow from anywhere
+require_2fa_for_admin: false
+session_encryption: "aes256"
+
+# Integration Settings
+home_assistant:
+  enabled: true
+  entity_prefix: "maestro_support"
+  webhook_url: "http://localhost:8123/api/webhook/maestro_support"
+
+# Compliance
+gdpr_compliant: true
+data_retention_days: 30
+anonymize_logs: true

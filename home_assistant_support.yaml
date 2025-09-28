@@ -1,0 +1,247 @@
+# Home Assistant Configuration for Maestro Remote Support
+# Add this to your configuration.yaml
+
+# REST Command for Remote Support API
+rest_command:
+  maestro_support_start:
+    url: "http://localhost:8765/api/support/start"
+    method: POST
+    headers:
+      content-type: "application/json"
+    payload: >
+      {
+        "customer_name": "{{ states('input_text.customer_name') }}",
+        "support_tier": "{{ states('input_select.support_tier') }}"
+      }
+
+  maestro_support_end:
+    url: "http://localhost:8765/api/support/end"
+    method: POST
+
+  maestro_support_extend:
+    url: "http://localhost:8765/api/support/extend"
+    method: POST
+    headers:
+      content-type: "application/json"
+    payload: >
+      {
+        "customer_approved": true
+      }
+
+# REST Sensor for Support Status
+rest:
+  - resource: "http://localhost:8765/api/support/status"
+    scan_interval: 10
+    name: "Maestro Support Session"
+    value_template: >
+      {% if value_json.active %}
+        Active
+      {% else %}
+        Inactive
+      {% endif %}
+    json_attributes:
+      - active
+      - session_id
+      - customer_name
+      - start_time
+      - end_time
+      - remaining_minutes
+      - connections
+
+# Input Fields for Support Dashboard
+input_text:
+  customer_name:
+    name: "Customer Name"
+    initial: ""
+    max: 50
+
+  support_session_id:
+    name: "Session ID"
+    initial: ""
+    max: 20
+
+  support_password:
+    name: "One-Time Password"
+    initial: ""
+    max: 20
+
+input_select:
+  support_tier:
+    name: "Support Tier"
+    options:
+      - "standard"
+      - "premium"
+      - "enterprise"
+    initial: "standard"
+
+input_boolean:
+  support_session_approved:
+    name: "Customer Approved Session"
+    initial: false
+
+# Timer for Session Warnings
+timer:
+  support_session_warning:
+    duration: "00:05:00"  # 5 minute warning
+
+# Sensors
+sensor:
+  - platform: template
+    sensors:
+      support_session_status:
+        friendly_name: "Support Session Status"
+        value_template: >
+          {% set status = states('rest_maestro_support_session') %}
+          {% if status == 'Active' %}
+            {% set remaining = state_attr('rest_maestro_support_session', 'remaining_minutes') %}
+            {% if remaining %}
+              Active ({{ remaining }} min remaining)
+            {% else %}
+              Active
+            {% endif %}
+          {% else %}
+            Inactive
+          {% endif %}
+        icon_template: >
+          {% if states('rest_maestro_support_session') == 'Active' %}
+            mdi:remote-desktop
+          {% else %}
+            mdi:remote-desktop-off
+          {% endif %}
+
+      support_session_time_remaining:
+        friendly_name: "Time Remaining"
+        value_template: >
+          {% set remaining = state_attr('rest_maestro_support_session', 'remaining_minutes') %}
+          {% if remaining %}
+            {{ remaining }} minutes
+          {% else %}
+            --
+          {% endif %}
+        unit_of_measurement: "minutes"
+
+# Automations
+automation:
+  # Start Support Session
+  - id: start_support_session
+    alias: "Start Remote Support Session"
+    trigger:
+      - platform: event
+        event_type: call_service
+        event_data:
+          domain: script
+          service: start_support_session
+    action:
+      - service: rest_command.maestro_support_start
+      - delay: "00:00:02"
+      - service: homeassistant.update_entity
+        entity_id: rest.maestro_support_session
+      - service: script.update_support_credentials
+
+  # End Support Session
+  - id: end_support_session
+    alias: "End Remote Support Session"
+    trigger:
+      - platform: event
+        event_type: call_service
+        event_data:
+          domain: script
+          service: end_support_session
+    action:
+      - service: rest_command.maestro_support_end
+      - delay: "00:00:02"
+      - service: homeassistant.update_entity
+        entity_id: rest.maestro_support_session
+      - service: input_text.set_value
+        entity_id: input_text.support_session_id
+        data:
+          value: ""
+      - service: input_text.set_value
+        entity_id: input_text.support_password
+        data:
+          value: ""
+
+  # Session Warning (5 minutes before expiry)
+  - id: support_session_warning
+    alias: "Support Session Expiry Warning"
+    trigger:
+      - platform: template
+        value_template: >
+          {{ state_attr('rest_maestro_support_session', 'remaining_minutes') == 5 }}
+    condition:
+      - condition: state
+        entity_id: rest_maestro_support_session
+        state: "Active"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "Support Session Expiring"
+          message: "Your remote support session will end in 5 minutes. Please save any work and prepare to end the session."
+          notification_id: "support_session_warning"
+      - service: timer.start
+        entity_id: timer.support_session_warning
+
+  # Auto-refresh session status
+  - id: refresh_support_status
+    alias: "Refresh Support Session Status"
+    trigger:
+      - platform: time_pattern
+        seconds: "/10"
+    condition:
+      - condition: state
+        entity_id: rest_maestro_support_session
+        state: "Active"
+    action:
+      - service: homeassistant.update_entity
+        entity_id: rest.maestro_support_session
+
+# Scripts
+script:
+  start_support_session:
+    alias: "Start Support Session"
+    sequence:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.support_session_approved
+      - service: rest_command.maestro_support_start
+      - delay: "00:00:03"
+      - service: homeassistant.update_entity
+        entity_id: rest.maestro_support_session
+      - service: script.update_support_credentials
+
+  end_support_session:
+    alias: "End Support Session"
+    sequence:
+      - service: rest_command.maestro_support_end
+      - delay: "00:00:02"
+      - service: homeassistant.update_entity
+        entity_id: rest.maestro_support_session
+      - service: input_boolean.turn_off
+        entity_id: input_boolean.support_session_approved
+      - service: script.clear_support_credentials
+
+  extend_support_session:
+    alias: "Extend Support Session"
+    sequence:
+      - service: input_boolean.turn_on
+        entity_id: input_boolean.support_session_approved
+      - service: rest_command.maestro_support_extend
+      - delay: "00:00:02"
+      - service: homeassistant.update_entity
+        entity_id: rest.maestro_support_session
+
+  update_support_credentials:
+    alias: "Update Support Credentials"
+    sequence:
+      - service: python_script.extract_support_credentials
+
+  clear_support_credentials:
+    alias: "Clear Support Credentials"
+    sequence:
+      - service: input_text.set_value
+        entity_id: input_text.support_session_id
+        data:
+          value: ""
+      - service: input_text.set_value
+        entity_id: input_text.support_password
+        data:
+          value: ""

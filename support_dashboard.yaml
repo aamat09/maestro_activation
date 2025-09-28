@@ -1,0 +1,171 @@
+# Maestro Remote Support Dashboard Card
+# Add this to your Lovelace dashboard
+
+type: vertical-stack
+cards:
+  # Header Card
+  - type: markdown
+    content: |
+      # 🛠️ Maestro Remote Support
+
+      **Secure, Customer-Controlled Remote Access**
+
+      Use this panel to grant temporary remote access to Maestro support staff.
+      Sessions are automatically secured and expire after 2 hours.
+
+  # Support Session Status Card
+  - type: conditional
+    conditions:
+      - entity: rest_maestro_support_session
+        state_not: "Active"
+    card:
+      type: entities
+      title: "📞 Request Remote Support"
+      show_header_toggle: false
+      entities:
+        - entity: input_text.customer_name
+          name: "Your Name"
+        - entity: input_select.support_tier
+          name: "Support Level"
+        - type: divider
+        - type: button
+          name: "🚀 Start Support Session"
+          action_name: "START"
+          service: script.start_support_session
+          style: |
+            .button {
+              background-color: #4CAF50;
+              color: white;
+              font-weight: bold;
+            }
+
+  # Active Session Card
+  - type: conditional
+    conditions:
+      - entity: rest_maestro_support_session
+        state: "Active"
+    card:
+      type: vertical-stack
+      cards:
+        # Session Info
+        - type: glance
+          title: "🔗 Active Support Session"
+          entities:
+            - entity: sensor.support_session_status
+              name: "Status"
+            - entity: sensor.support_session_time_remaining
+              name: "Time Left"
+
+        # Credentials Display
+        - type: entities
+          title: "📋 Session Credentials"
+          show_header_toggle: false
+          entities:
+            - entity: input_text.support_session_id
+              name: "Session ID"
+              icon: mdi:identifier
+            - entity: input_text.support_password
+              name: "One-Time Password"
+              icon: mdi:key
+            - type: divider
+            - type: markdown
+              content: |
+                **📞 Provide these credentials to the support technician:**
+
+                1. **Session ID**: `{{ states('input_text.support_session_id') }}`
+                2. **Password**: `{{ states('input_text.support_password') }}`
+
+                ⚠️ **Important**: Only share these with authorized Maestro support staff!
+
+        # Session Controls
+        - type: horizontal-stack
+          cards:
+            - type: button
+              entity: script.extend_support_session
+              name: "⏰ Extend +1hr"
+              icon: mdi:clock-plus
+              tap_action:
+                action: call-service
+                service: script.extend_support_session
+                confirmation:
+                  text: "Extend support session by 1 hour?"
+
+            - type: button
+              entity: script.end_support_session
+              name: "🛑 End Session"
+              icon: mdi:stop
+              tap_action:
+                action: call-service
+                service: script.end_support_session
+                confirmation:
+                  text: "Are you sure you want to end the support session?"
+
+  # Session History (Optional)
+  - type: conditional
+    conditions:
+      - entity: sensor.maestro_last_support_session
+        state_not: "unknown"
+    card:
+      type: entities
+      title: "📊 Last Support Session"
+      show_header_toggle: false
+      entities:
+        - entity: sensor.maestro_last_support_session
+          name: "Date"
+        - entity: sensor.maestro_last_session_duration
+          name: "Duration"
+
+  # Instructions Card
+  - type: markdown
+    content: |
+      ## 📖 How Remote Support Works
+
+      ### 🔒 **Your Privacy & Security**
+      - Sessions are **end-to-end encrypted**
+      - **You maintain full control** - end session anytime
+      - **No permanent access** - sessions auto-expire
+      - **Audit logs** track all activities
+
+      ### 📋 **Session Process**
+      1. **Click "Start Support Session"** above
+      2. **Wait 10-15 seconds** for credentials to generate
+      3. **Read the Session ID and Password** to the support technician
+      4. **Support staff connects** using your credentials
+      5. **Session ends automatically** after 2 hours or when you click "End Session"
+
+      ### ⚠️ **Important Notes**
+      - Only share credentials with **verified Maestro support staff**
+      - Session credentials are **single-use** and expire automatically
+      - Support staff can only access your **Home Assistant interface**
+      - **No file system access** - only configuration changes
+      - You can **watch everything** the technician does in real-time
+
+      ### 📞 **Need Help?**
+      Contact Maestro Support: **support@maestro.com** | **1-800-MAESTRO**
+
+  # Emergency Stop
+  - type: conditional
+    conditions:
+      - entity: rest_maestro_support_session
+        state: "Active"
+    card:
+      type: entities
+      title: "🚨 Emergency Controls"
+      show_header_toggle: false
+      entities:
+        - type: button
+          name: "🚨 EMERGENCY STOP"
+          action_name: "STOP NOW"
+          service: script.emergency_stop_support
+          style: |
+            .button {
+              background-color: #f44336;
+              color: white;
+              font-weight: bold;
+              animation: blink 1s infinite;
+            }
+            @keyframes blink {
+              0% { opacity: 1; }
+              50% { opacity: 0.5; }
+              100% { opacity: 1; }
+            }
